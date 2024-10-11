@@ -1,4 +1,4 @@
-module QDSim
+module QuantDynSim
 
 using LinearAlgebra
 using MKL
