@@ -1,6 +1,6 @@
-using QDSim
+using QuantDynSim
 using Test
 
-@testset "QDSim.jl" begin
+@testset "QuantDynSim.jl" begin
     # Write your tests here.
 end
