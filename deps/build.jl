@@ -1,3 +1,3 @@
-using QDSim
+using QuantDynSim
 
-QDSim.comonicon_install()
+QuantDynSim.comonicon_install()
