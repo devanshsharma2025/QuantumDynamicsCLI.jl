@@ -35,4 +35,9 @@ The most important sub-command of `simulate` is `run`, and for `post` is `get-ob
 
 ## Examples
 
-A series of examples are provided in the [examples](./examples/) folder.
+A series of examples are provided in the [examples](./examples/) folder. Below we list the broad ideas covered:
+
+1. Path Integral Simulation of Dynamics:
+    1. [Spin-Boson Problem](./examples/01-Spin-Boson/)
+2. Hierarchical Equations of Motion:
+    1. [Fenna-Matthews-Olson Complex](./examples/02-Ishizaki-Fleming-FMO/)

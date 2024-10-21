@@ -215,7 +215,7 @@ function dynamics(::QDSimUtilities.Method"HEOM", units::QDSimUtilities.Units, sy
 
         Hamiltonian = sys.Hamiltonian .+ diagm(sum([SpectralDensities.reorganization_energy(j) * bath.svecs[nb, :] .^ 2 for (nb, j) in enumerate(bath.Jw)])) 
         sys_ops = [diagm(complex(bath.svecs[nb, :])) for nb = 1:size(bath.svecs, 1)]
-        ρ0 = ParseInput.parse_operator(sim_node["rho0"], sim.Hamiltonian)
+        ρ0 = ParseInput.parse_operator(sim_node["rho0"], sys.Hamiltonian)
         @time _, ρs = HEOM.propagate(; Hamiltonian, ρ0, sys_ops, Jw=bath.Jw, β=bath.β, num_modes, Lmax, dt=sim.dt, ntimes=sim.nsteps, threshold, extraargs=Utilities.DiffEqArgs(; reltol, abstol))
         Utilities.check_or_insert_value(data, "rho", ρs)
         flush(data)
