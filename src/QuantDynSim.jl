@@ -1,4 +1,4 @@
-module QuantDynSim
+module QuantumDynamicsCLI
 
 using LinearAlgebra
 using MKL

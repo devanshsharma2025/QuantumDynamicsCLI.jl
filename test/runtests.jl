@@ -1,6 +1,6 @@
-using QuantDynSim
+using QuantumDynamicsCLI
 using Test
 
-@testset "QuantDynSim.jl" begin
+@testset "QuantumDynamicsCLI.jl" begin
     # Write your tests here.
 end

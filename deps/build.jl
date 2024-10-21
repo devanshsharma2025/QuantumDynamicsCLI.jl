@@ -1,3 +1,3 @@
-using QuantDynSim
+using QuantumDynamicsCLI
 
-QuantDynSim.comonicon_install()
+QuantumDynamicsCLI.comonicon_install()
