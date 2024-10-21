@@ -48,7 +48,7 @@ end
         outputdirs = sim_node["outgroup"]
         for (nρ, (ρ0file, outputdir)) in enumerate(zip(ρ0s, outputdirs))
             @info "Processing initial density number $(nρ)."
-            ρ0 = ParseInput.read_matrix(ρ0file)
+            ρ0 = ParseInput.parse_operator(ρ0file, sys.Hamiltonian)
             ts, ρs = Utilities.apply_propagator(; propagators=U0es, ρ0, ntimes=sim.nsteps, sim.dt)
             @info "Saving the data in $(outputdir)."
             out = Utilities.create_and_select_group(data_node, outputdir)

@@ -26,3 +26,13 @@ QuantumDynamicsCLI.jl has been installed and built, `qdsim` is usually placed in
 ```bash
 > qdsim <component_name> <command_name> <arguments>
 ```
+
+Currently, two `command`s are supported:
+- `simulate`: gives access to various techniques for simulating the dynamics
+- `post`: provides post-processing tools for the output
+
+The most important sub-command of `simulate` is `run`, and for `post` is `get-observable`.
+
+## Examples
+
+A series of examples are provided in the [examples](./examples/) folder.
