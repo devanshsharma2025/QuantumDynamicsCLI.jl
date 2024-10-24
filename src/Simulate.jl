@@ -60,6 +60,52 @@ end
     end
 end
 
+@cast function propagate_using_gqme(system_input, simulate_input)
+    QDSimUtilities.print_banner()
+    @info "Using $(Utilities.get_BLAS_implementation()) for linear algebra."
+    @info "Using transfer tensors to propagate the reduced density matrices:"
+    QDSimUtilities.print_citation(TTM.references)
+    units, sys, bath = ParseInput.parse_system_bath(system_input)
+    sim_file = TOML.parsefile(simulate_input)
+    prop_node = sim_file["propagate"]
+    for (ns, sim_node) in enumerate(prop_node["simulation"])
+        @info "Processing simulation number $(ns)."
+        sim = ParseInput.parse_sim(sim_node, units)
+        @assert isfile(sim.output) "File not present."
+        out = h5open(sim.output, "r+")
+        sim_group = out[sim.name]
+        Hamiltonian = read_dataset(sim_group, "Hamiltonian") * units.energy_unit
+        method_group = sim_group["$(sim.calculation)/$(sim.method)"]
+        data_node = calc(QDSimUtilities.Calculation(sim.calculation)(), sys, bath, sim, units, sim_node, method_group; dry=true)
+        ts = read_dataset(data_node, "time") * unites.time_unit
+        dt = ts[2] - ts[1]
+        fbU = Propagators.calculate_bare_propagators(; Hamiltonian, dt)
+        Ts = read_dataset(data_node, "T0e")
+        Ks = TTM.get_memory_kernel(Ts, fbU[1, :, :], dt)
+
+        if haskey(sim_node, "lindblad")
+            decayconstant = [sim_node["decay_constant"][i] for i in 1:length(sim_node["decay_constant"])]
+            L = [ParseInput.parse_operator(sim_node["lindblad"][i], Hamiltonian) / sqrt(decayconstant[i] * time_unit) for i in 1:length(sim_node["decay_constant"])]
+        else
+            L = nothing
+        end
+
+        ρ0s = sim_node["rho0"]
+        outputdirs = sim_node["outgroup"]
+        for (nρ, (ρ0file, outputdir)) in enumerate(zip(ρ0s, outputdirs))
+            @info "Processing initial density number $(nρ)."
+            ρ0 = ParseInput.parse_operator(ρ0file, sys.Hamiltonian)
+            ts, ρs = GQME.propagate_with_memory_kernel(; K=Ks, fbU=fbU[1, :, :], ρ0=(μ * ρ0), ntimes=ntimes, dt=dt, L=L)
+            @info "Saving the data in $(outputdir)."
+            out = Utilities.create_and_select_group(data_node, outputdir)
+            Utilities.check_or_insert_value(out, "time", collect(ts) ./ units.time_unit)
+            Utilities.check_or_insert_value(out, "time_unit", units.time_unit)
+            Utilities.check_or_insert_value(out, "rho", ρs)
+        end
+        close(out)
+    end
+end
+
 @cast function run(system_input, simulate_input)
     QDSimUtilities.print_banner()
 

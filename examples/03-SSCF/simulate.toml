@@ -1,0 +1,16 @@
+[simulation]
+name = "test"
+calculation = "complex_corr"
+method = "TNPI"
+output = "test.hdf5"
+
+nsteps = 50
+dt = 0.25
+tfinal = 25.0
+
+A = "sigmaz"
+B = "sigmaz"
+partition_function = "id"
+
+maxdim = 1000
+cutoff = 1e-10

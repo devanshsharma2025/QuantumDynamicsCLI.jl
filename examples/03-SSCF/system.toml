@@ -1,0 +1,10 @@
+[system]
+Hamiltonian = "Hamiltonian"
+
+[baths]
+beta = 0.4
+[[baths.bath]]
+type = "ohmic"
+xi = 0.18
+omegac = 30.0
+svec = [1.0, -1.0]

@@ -173,6 +173,15 @@ function parse_operator(op, Hamiltonian)
         state = parse(Int64, split(op, "_")[2])
         obs[state, state] = 1
         1im * Utilities.commutator(Hamiltonian, obs)
+    elseif startswith(op, "O_")
+        states = parse.(Int64, split(split(op, "_")[2], ","))
+        obs[states[1], states[2]] = 1
+        obs
+    elseif op == "id"
+        for j = 1:size(Hamiltonian, 1)
+            obs[j, j] = 1.0
+        end
+        obs
     else
         ParseInput.read_matrix(op)
     end
