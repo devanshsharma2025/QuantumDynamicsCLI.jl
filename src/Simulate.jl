@@ -77,7 +77,7 @@ end
         Hamiltonian = read_dataset(sim_group, "Hamiltonian") * units.energy_unit
         method_group = sim_group["$(sim.calculation)/$(sim.method)"]
         data_node = calc(QDSimUtilities.Calculation(sim.calculation)(), sys, bath, sim, units, sim_node, method_group; dry=true)
-        ts = read_dataset(data_node, "time") * unites.time_unit
+        ts = read_dataset(data_node, "time") * units.time_unit
         dt = ts[2] - ts[1]
         fbU = Propagators.calculate_bare_propagators(; Hamiltonian, dt)
         Ts = read_dataset(data_node, "T0e")
@@ -95,7 +95,7 @@ end
         for (nρ, (ρ0file, outputdir)) in enumerate(zip(ρ0s, outputdirs))
             @info "Processing initial density number $(nρ)."
             ρ0 = ParseInput.parse_operator(ρ0file, sys.Hamiltonian)
-            ts, ρs = GQME.propagate_with_memory_kernel(; K=Ks, fbU=fbU[1, :, :], ρ0=(μ * ρ0), ntimes=ntimes, dt=dt, L=L)
+            ts, ρs = GQME.propagate_with_memory_kernel(; K=Ks, fbU=fbU[1, :, :], ρ0, ntimes=sim.nsteps, dt=sim.dt, L=L)
             @info "Saving the data in $(outputdir)."
             out = Utilities.create_and_select_group(data_node, outputdir)
             Utilities.check_or_insert_value(out, "time", collect(ts) ./ units.time_unit)

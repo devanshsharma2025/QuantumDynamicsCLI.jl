@@ -1,0 +1,19 @@
+[units]
+energy_unit_name = "cm^-1"
+time_unit_name = "fs"
+
+[system]
+Htype = "nearest_neighbor_cavity"
+num_sites = 3
+site_energy = 0.0
+cavity_energy = 0.0
+coupling = -150.0
+cavity_coupling = 75.0
+is_QuAPI = false
+
+[baths]
+temperature = 300
+baths_type = "site_based"
+[[baths.bath]]
+type = "tabular"
+jw_file = "spectral_density"

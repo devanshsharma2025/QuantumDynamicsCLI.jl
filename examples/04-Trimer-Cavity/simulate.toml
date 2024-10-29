@@ -1,0 +1,12 @@
+[simulation]
+name = "trimer-cavity"
+method = "adaptive-kinks-QuAPI-TTM"
+output = "test.hdf5"
+
+nsteps = 100
+rmax = 30
+dt = 2.0
+cutoff = 1e-10
+num_kinks = 8
+num_blips = -1
+propagator_cutoff = 1e-3

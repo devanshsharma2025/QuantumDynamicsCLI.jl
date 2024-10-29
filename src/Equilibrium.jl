@@ -2,6 +2,7 @@ module Equilibrium
 
 using QuantumDynamics
 using LinearAlgebra
+using DelimitedFiles
 using ..QDSimUtilities, ..ParseInput
 
 function rho(::QDSimUtilities.Method"TNPI", units::QDSimUtilities.Units, sys::QDSimUtilities.System, bath::QDSimUtilities.Bath, sim::QDSimUtilities.Simulation, dat_group::HDF5.Group, sim_node; dry=false)
@@ -139,13 +140,26 @@ function complex_time_correlation_function(::QDSimUtilities.Method"QuAPI", units
         Utilities.check_or_insert_value(data, "eqm_rho", real.(At / tr(At)))
         A = ParseInput.parse_operator(sim_node["A"], sys.Hamiltonian)
         B = ParseInput.parse_operator(sim_node["B"], sys.Hamiltonian)
+        ofile = sim_node["correlation_function_output"]
         ts, corr, _ = ComplexQuAPI.complex_correlation_function(; Hamiltonian=sys.Hamiltonian, β=bath.β, tfinal, dt=sim.dt, N=sim.nsteps, Jw=bath.Jw, svec=bath.svecs, A, B=[B], Z, verbose=true, extraargs, output=data, type_corr)
+        open("real_corr_$(ofile)", "w") do io
+            writedlm(io, [ts./units.time_unit real.(corr)])
+        end
+        open("imag_corr_$(ofile)", "w") do io
+            writedlm(io, [ts./units.time_unit imag.(corr)])
+        end
         ft = get(sim_node, "fourier_transform", false)
         if ft
             conjugated = get(sim_node, "conjugate", false)
             ωs, spectrum = conjugated ? Utilities.fourier_transform(ts, conj.(corr)) : Utilities.fourier_transform(ts, corr)
             Utilities.check_or_insert_value(data, "frequency", ωs ./units.energy_unit)
             Utilities.check_or_insert_value(data, "spectrum", spectrum)
+            open("real_spect_$(ofile)", "w") do io
+                writedlm(io, [ωs./units.energy_unit real.(spectrum)])
+            end
+            open("imag_spect_$(ofile)", "w") do io
+                writedlm(io, [ωs./units.energy_unit imag.(spectrum)])
+            end
         end
     end
     data

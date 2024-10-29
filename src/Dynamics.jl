@@ -29,15 +29,13 @@ function dynamics(::QDSimUtilities.Method"TNPI-TTM", units::QDSimUtilities.Units
     if !dry
         Utilities.check_or_insert_value(data, "dt", sim.dt / units.time_unit)
         Utilities.check_or_insert_value(data, "time_unit", units.time_unit)
-        Utilities.check_or_insert_value(data, "time", 0:sim.dt/units.time_unit:sim.nsteps*sim.dt/units.time_unit |> collect)
+        Utilities.check_or_insert_value(data, "time", 0:sim.dt/units.time_unit:rmax*sim.dt/units.time_unit |> collect)
         flush(data)
-        # path_integral_routine = TEMPO.build_augmented_propagator
         extraargs = TEMPO.TEMPOArgs(; cutoff, maxdim, algorithm)
         fbU = Propagators.calculate_bare_propagators(; Hamiltonian=sys.Hamiltonian, dt=sim.dt, ntimes=rmax)
         Utilities.check_or_insert_value(data, "fbU", fbU)
         flush(data)
         TEMPO.build_augmented_propagator(; fbU, Jw=bath.Jw, β=bath.β, dt=sim.dt, ntimes=rmax, kmax, extraargs, svec=bath.svecs, verbose=true, output=data)
-        # TTM.get_propagators(; fbU, Jw=bath.Jw, β=bath.β, dt=sim.dt, ntimes=sim.nsteps, rmax, kmax, path_integral_routine, extraargs, svec=bath.svecs, verbose=true, output=data)
         @info "After this run, please run a propagate-using-tmats calculation to obtain the time evolution of a particular density matrix."
     end
     data
@@ -60,16 +58,14 @@ function dynamics(::QDSimUtilities.Method"QuAPI-TTM", units::QDSimUtilities.Unit
     if !dry
         Utilities.check_or_insert_value(data, "dt", sim.dt / units.time_unit)
         Utilities.check_or_insert_value(data, "time_unit", units.time_unit)
-        Utilities.check_or_insert_value(data, "time", 0:sim.dt:sim.nsteps*sim.dt |> collect)
+        Utilities.check_or_insert_value(data, "time", 0:sim.dt/units.time_unit:rmax*sim.dt/units.time_unit |> collect)
         flush(data)
 
-        # path_integral_routine = QuAPI.build_augmented_propagator
         extraargs = QuAPI.QuAPIArgs(; cutoff)
         fbU = Propagators.calculate_bare_propagators(; Hamiltonian=sys.Hamiltonian, dt=sim.dt, ntimes=rmax)
         Utilities.check_or_insert_value(data, "fbU", fbU)
         flush(data)
         QuAPI.build_augmented_propagator(; fbU, Jw=bath.Jw, β=bath.β, dt=sim.dt, ntimes=rmax, extraargs, svec=bath.svecs, verbose=true, output=data, exec=QDSimUtilities.parse_exec(exec))
-        # TTM.get_propagators(; fbU, Jw=bath.Jw, β=bath.β, dt=sim.dt, ntimes=sim.nsteps, rmax=rmax, path_integral_routine, extraargs, svec=bath.svecs, verbose=true, output=data, exec=QDSimUtilities.parse_exec(exec))..., data
         @info "After this run, please run a propagate-using-tmats calculation to obtain the time evolution of a particular density matrix."
     end
     data
@@ -98,16 +94,15 @@ function dynamics(::QDSimUtilities.Method"adaptive-kinks-QuAPI-TTM", units::QDSi
     if !dry
         Utilities.check_or_insert_value(data, "dt", sim.dt / units.time_unit)
         Utilities.check_or_insert_value(data, "time_unit", units.time_unit)
-        Utilities.check_or_insert_value(data, "time", 0:sim.dt:sim.nsteps*sim.dt |> collect)
+        Utilities.check_or_insert_value(data, "time", 0:sim.dt/units.time_unit:rmax*sim.dt/units.time_unit |> collect)
         flush(data)
 
-        # path_integral_routine = QuAPI.build_augmented_propagator_kink
         extraargs = QuAPI.QuAPIArgs(; cutoff, prop_cutoff, num_kinks, num_blips)
-        fbU = Propagators.calculate_bare_propagators(; Hamiltonian=sys.Hamiltonian, dt=sim.dt, ntimes=rmax, forward_backward=false)
+        fbU = Propagators.calculate_bare_propagators(; Hamiltonian=sys.Hamiltonian, dt=sim.dt, ntimes=rmax, forward_backward=true)
         Utilities.check_or_insert_value(data, "fbU", fbU)
         flush(data)
+        fbU = Propagators.calculate_bare_propagators(; Hamiltonian=sys.Hamiltonian, dt=sim.dt, ntimes=rmax, forward_backward=false)
         QuAPI.build_augmented_propagator_kink(; fbU, Jw=bath.Jw, β=bath.β, dt=sim.dt, ntimes=rmax, extraargs, svec=bath.svecs, verbose=true, output=data, exec=QDSimUtilities.parse_exec(exec))
-        # TTM.get_propagators(; fbU, Jw=bath.Jw, β=bath.β, dt=sim.dt, ntimes=sim.nsteps, rmax=rmax, path_integral_routine, extraargs, svec=bath.svecs, verbose=true, output=data, exec=QDSimUtilities.parse_exec(exec), forward_backward=false)..., data
         @info "After this run, please run a propagate-using-tmats calculation to obtain the time evolution of a particular density matrix."
     end
     data
@@ -140,16 +135,14 @@ function dynamics(::QDSimUtilities.Method"Blip-TTM", units::QDSimUtilities.Units
     if !dry
         Utilities.check_or_insert_value(data, "dt", sim.dt / units.time_unit)
         Utilities.check_or_insert_value(data, "time_unit", units.time_unit)
-        Utilities.check_or_insert_value(data, "time", 0:sim.dt:sim.nsteps*sim.dt |> collect)
+        Utilities.check_or_insert_value(data, "time", 0:sim.dt/units.time_unit:rmax*sim.dt/units.time_unit |> collect)
         flush(data)
 
-        # path_integral_routine = Blip.build_augmented_propagator
         extraargs = Blip.BlipArgs(; max_blips, num_changes)
         fbU = Propagators.calculate_bare_propagators(; Hamiltonian=sys.Hamiltonian, dt=sim.dt, ntimes=rmax)
         Utilities.check_or_insert_value(data, "fbU", fbU)
         flush(data)
         Blip.build_augmented_propagator(; fbU, Jw=bath.Jw, β=bath.β, dt=sim.dt, ntimes=rmax, extraargs, svec=bath.svecs, verbose=true, output=data, exec=QDSimUtilities.parse_exec(exec))
-        # TTM.get_propagators(; fbU, Jw=bath.Jw, β=bath.β, dt=sim.dt, ntimes=sim.nsteps, rmax=rmax, path_integral_routine, extraargs, svec=bath.svecs, verbose=true, output=data, exec=QDSimUtilities.parse_exec(exec))..., data
     end
     data
 end
@@ -158,7 +151,6 @@ function dynamics(::QDSimUtilities.Method"adaptive-kinks-QuAPI", units::QDSimUti
     if !dry
         @info "Running an adaptive kinks QuAPI calculation with TTM. Please cite:"
         QDSimUtilities.print_citation(QuAPI.references)
-        QDSimUtilities.print_citation(TTM.references)
     end
     rmax = sim_node["rmax"]
     rmax_group = Utilities.create_and_select_group(dt_group, "rmax=$(rmax)")
@@ -179,12 +171,13 @@ function dynamics(::QDSimUtilities.Method"adaptive-kinks-QuAPI", units::QDSimUti
         data = Utilities.create_and_select_group(data, outgroup)
         Utilities.check_or_insert_value(data, "dt", sim.dt / units.time_unit)
         Utilities.check_or_insert_value(data, "time_unit", units.time_unit)
-        Utilities.check_or_insert_value(data, "time", 0:sim.dt:rmax*sim.dt |> collect)
+        Utilities.check_or_insert_value(data, "time", 0:sim.dt/units.time_unit:rmax*sim.dt/units.time_unit |> collect)
         flush(data)
 
         extraargs = QuAPI.QuAPIArgs(; cutoff, prop_cutoff, num_kinks, num_blips)
-        fbU = Propagators.calculate_bare_propagators(; Hamiltonian=sys.Hamiltonian, dt=sim.dt, ntimes=rmax, forward_backward=false)
+        fbU = Propagators.calculate_bare_propagators(; Hamiltonian=sys.Hamiltonian, dt=sim.dt, ntimes=rmax, forward_backward=true)
         Utilities.check_or_insert_value(data, "fbU", fbU)
+        fbU = Propagators.calculate_bare_propagators(; Hamiltonian=sys.Hamiltonian, dt=sim.dt, ntimes=rmax, forward_backward=false)
         flush(data)
         ρ0 = ParseInput.parse_operator(sim_node["rho0"], sys.Hamiltonian)
         QuAPI.propagate_kink(; fbU, Jw=bath.Jw, β=bath.β, ρ0, dt=sim.dt, ntimes=rmax, extraargs, svec=bath.svecs, verbose=true, output=data, exec=QDSimUtilities.parse_exec(exec))
@@ -210,7 +203,7 @@ function dynamics(::QDSimUtilities.Method"HEOM", units::QDSimUtilities.Units, sy
         data = Utilities.create_and_select_group(data, outgroup)
         Utilities.check_or_insert_value(data, "dt", sim.dt / units.time_unit)
         Utilities.check_or_insert_value(data, "time_unit", units.time_unit)
-        Utilities.check_or_insert_value(data, "time", 0:sim.dt:sim.nsteps*sim.dt |> collect)
+        Utilities.check_or_insert_value(data, "time", 0:sim.dt/units.time_unit:sim.nsteps*sim.dt/units.time_unit |> collect)
         flush(data)
 
         Hamiltonian = sys.Hamiltonian .+ diagm(sum([SpectralDensities.reorganization_energy(j) * bath.svecs[nb, :] .^ 2 for (nb, j) in enumerate(bath.Jw)])) 
@@ -231,7 +224,7 @@ function dynamics(::QDSimUtilities.Method"Forster", units::QDSimUtilities.Units,
     if !dry
         Utilities.check_or_insert_value(data, "dt", sim.dt / units.time_unit)
         Utilities.check_or_insert_value(data, "time_unit", units.time_unit)
-        Utilities.check_or_insert_value(data, "time", 0:sim.dt:sim.nsteps*sim.dt |> collect)
+        Utilities.check_or_insert_value(data, "time", 0:sim.dt/units.time_unit:sim.nsteps*sim.dt/units.time_unit |> collect)
         flush(data)
 
         k, U = Forster.build_incoherent_propagator(; H=sys.Hamiltonian, Jw=bath.Jw, dt, β=bath.β, verbose=true)
