@@ -41,7 +41,11 @@ end
         out = h5open(sim.output, "r+")
         method_group = out["$(sim.name)/$(sim.calculation)/$(sim.method)"]
         data_node = calc(QDSimUtilities.Calculation(sim.calculation)(), sys, bath, sim, units, sim_node, method_group; dry=true)
+        num_tmats_used = get(sim_node, "num_tmats_used", -1)
         Ts = read_dataset(data_node, "T0e")
+        if num_tmats_used != -1
+            Ts = Ts[1:num_tmats_used, :, :]
+        end
         U0es = TTM.get_propagators_from_Ts(Ts, sim.nsteps)
 
         ρ0s = sim_node["rho0"]
@@ -49,11 +53,11 @@ end
         for (nρ, (ρ0file, outputdir)) in enumerate(zip(ρ0s, outputdirs))
             @info "Processing initial density number $(nρ)."
             ρ0 = ParseInput.parse_operator(ρ0file, sys.Hamiltonian)
-            ts, ρs = Utilities.apply_propagator(; propagators=U0es, ρ0, ntimes=sim.nsteps, sim.dt)
+            ts, ρs = Utilities.apply_propagator(; propagators=U0es, ρ0, ntimes=sim.nsteps, dt=sim.dt)
             @info "Saving the data in $(outputdir)."
             out = Utilities.create_and_select_group(data_node, outputdir)
-            Utilities.check_or_insert_value(out, "time", collect(ts))
-            Utilities.check_or_insert_value(out, "time_unit" , units.time_unit)
+            Utilities.check_or_insert_value(out, "time", collect(ts) ./ units.time_unit)
+            Utilities.check_or_insert_value(out, "time_unit", units.time_unit)
             Utilities.check_or_insert_value(out, "rho", ρs)
         end
         close(out)
