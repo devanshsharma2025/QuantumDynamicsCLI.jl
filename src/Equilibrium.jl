@@ -140,26 +140,61 @@ function complex_time_correlation_function(::QDSimUtilities.Method"QuAPI", units
         Utilities.check_or_insert_value(data, "eqm_rho", real.(At / tr(At)))
         A = ParseInput.parse_operator(sim_node["A"], sys.Hamiltonian)
         B = ParseInput.parse_operator(sim_node["B"], sys.Hamiltonian)
-        ofile = sim_node["correlation_function_output"]
         ts, corr, _ = ComplexQuAPI.complex_correlation_function(; Hamiltonian=sys.Hamiltonian, β=bath.β, tfinal, dt=sim.dt, N=sim.nsteps, Jw=bath.Jw, svec=bath.svecs, A, B=[B], Z, verbose=true, extraargs, output=data, type_corr)
-        open("real_corr_$(ofile)", "w") do io
-            writedlm(io, [ts./units.time_unit real.(corr)])
-        end
-        open("imag_corr_$(ofile)", "w") do io
-            writedlm(io, [ts./units.time_unit imag.(corr)])
-        end
         ft = get(sim_node, "fourier_transform", false)
         if ft
             conjugated = get(sim_node, "conjugate", false)
             ωs, spectrum = conjugated ? Utilities.fourier_transform(ts, conj.(corr)) : Utilities.fourier_transform(ts, corr)
-            Utilities.check_or_insert_value(data, "frequency", ωs ./units.energy_unit)
+            Utilities.check_or_insert_value(data, "frequency", ωs ./ units.energy_unit)
             Utilities.check_or_insert_value(data, "spectrum", spectrum)
-            open("real_spect_$(ofile)", "w") do io
-                writedlm(io, [ωs./units.energy_unit real.(spectrum)])
-            end
-            open("imag_spect_$(ofile)", "w") do io
-                writedlm(io, [ωs./units.energy_unit imag.(spectrum)])
-            end
+        end
+    end
+    data
+end
+
+function complex_time_correlation_function(::QDSimUtilities.Method"adaptive-kinks-QuAPI", units::QDSimUtilities.Units, sys::QDSimUtilities.System, bath::QDSimUtilities.Bath, sim::QDSimUtilities.Simulation, dat_group::HDF5.Group, sim_node; dry=false)
+    if !dry
+        @info "Running a complex time QuAPI simulation. Please cite:"
+        QDSimUtilities.print_citation(ComplexTNPI.references)
+    end
+    cutoff = get(sim_node, "cutoff", 1e-10)
+    tfinal = sim_node["tfinal"] * units.time_unit
+    exec = get(sim_node, "exec", "ThreadedEx")
+    if exec != "SequentialEx"
+        @info "Running with $(Threads.nthreads()) threads."
+    end
+
+    type_corr = get(sim_node, "corr_type", "symm")
+
+    cutoff_group = Utilities.create_and_select_group(dat_group, "cutoff=$(cutoff)")
+    prop_cutoff = get(sim_node, "propagator_cutoff", 0.0)
+    data = Utilities.create_and_select_group(cutoff_group, "prop_cutoff=$(prop_cutoff)")
+    if !dry
+        Utilities.check_or_insert_value(data, "dt", sim.dt / units.time_unit)
+        Utilities.check_or_insert_value(data, "time_unit", units.time_unit)
+        Utilities.check_or_insert_value(data, "time", 0:sim.dt/units.time_unit:tfinal/units.time_unit |> collect)
+        flush(data)
+        extraargs = QuAPI.QuAPIArgs(; cutoff, prop_cutoff)
+
+        nsites = size(sys.Hamiltonian, 1)
+
+        idmat = Matrix(1.0I, nsites, nsites)
+        @info "Calculating the partition function for normalization."
+        At, _ = ComplexQuAPI.adaptive_kink_A_of_t(; Hamiltonian=sys.Hamiltonian, β=bath.β, t=0.0, N=sim.nsteps, Jw=bath.Jw, svec=bath.svecs, A=idmat, extraargs)
+        norm_op = get(sim_node, "partition_function", "id")
+        Z = real(tr(At * ParseInput.parse_operator(norm_op, sys.Hamiltonian)))
+        @info "Partition function = $(Z)."
+        @info "Saving the equilibrium density matrix."
+        Utilities.check_or_insert_value(data, "eqm_rho", real.(At / tr(At)))
+        A = ParseInput.parse_operator(sim_node["A"], sys.Hamiltonian)
+        B = ParseInput.parse_operator(sim_node["B"], sys.Hamiltonian)
+        ts, corr, _ = ComplexQuAPI.adaptive_kink_complex_correlation_function(; Hamiltonian=sys.Hamiltonian, β=bath.β, tfinal, dt=sim.dt, N=sim.nsteps, Jw=bath.Jw, svec=bath.svecs, A, B=[B], Z, verbose=true, extraargs, output=data, type_corr)
+        ft = get(sim_node, "fourier_transform", false)
+        if ft
+            conjugated = get(sim_node, "conjugate", false)
+            ωs, spectrum = conjugated ? Utilities.fourier_transform(ts, conj.(corr)) : Utilities.fourier_transform(ts, corr)
+            Utilities.check_or_insert_value(data, "frequency", ωs ./ units.energy_unit)
+            Utilities.check_or_insert_value(data, "spectrum", spectrum)
         end
     end
     data

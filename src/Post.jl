@@ -105,22 +105,16 @@ function calculate_print_observable(::QDSimUtilities.Calculation"complex_corr", 
     ts = read_dataset(data_node, "time")
     corr = read_dataset(data_node, "corr")
 
-    open("$(fname)_real$(ext)", "w") do io
-        writedlm(io, [round.(ts; sigdigits=10) round.(real.(corr); sigdigits=10)])
-    end
-    open("$(fname)_imag$(ext)", "w") do io
-        writedlm(io, [round.(ts; sigdigits=10) round.(imag.(corr); sigdigits=10)])
+    open("$(fname)$(ext)", "w") do io
+        writedlm(io, [round.(ts; sigdigits=10) round.(real.(corr); sigdigits=10) round.(imag.(corr); sigdigits=10)])
     end
 
     ft = get(sim_node, "fourier_transform", false)
     if ft
         freq = read_dataset(data_node, "frequency")
         spect = read_dataset(data_node, "spectrum")
-        open("$(fname)_real_spectrum$(ext)", "w") do io
-            writedlm(io, [round.(freq; sigdigits=10) round.(real.(spect); sigdigits=10)])
-        end
-        open("$(fname)_imag_spectrum$(ext)", "w") do io
-            writedlm(io, [round.(freq; sigdigits=10) round.(imag.(spect); sigdigits=10)])
+        open("$(fname)_spectrum$(ext)", "w") do io
+            writedlm(io, [round.(freq; sigdigits=10) round.(real.(spect); sigdigits=10) round.(imag.(spect); sigdigits=10)])
         end
     end
 end
