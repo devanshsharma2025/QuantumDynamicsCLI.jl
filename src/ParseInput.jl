@@ -85,7 +85,7 @@ function get_bath(b, unit)
     elseif sd_type == "drude_lorentz"
         λ = b["lambda"] * unit.energy_unit
         γ = b["gamma"]
-        ωmax = get(b, "omega_max", 100.0 * γ)
+        ωmax = get(b, "omega_max", 1000.0 * γ)
         γ *= unit.energy_unit
         ωmax *= unit.energy_unit
         npoints = get(b, "npoints", 100000)

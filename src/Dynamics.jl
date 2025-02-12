@@ -216,6 +216,31 @@ function dynamics(::QDSimUtilities.Method"HEOM", units::QDSimUtilities.Units, sy
     data
 end
 
+function dynamics(::QDSimUtilities.Method"BlochRedfield", units::QDSimUtilities.Units, sys::QDSimUtilities.System, bath::QDSimUtilities.Bath, sim::QDSimUtilities.Simulation, dt_group::Union{Nothing,HDF5.Group}, sim_node; dry=false)
+    if !dry
+        @info "Running a Bloch-Redfield calculation."
+    end
+    reltol = get(sim_node, "reltol", 1e-6)
+    abstol = get(sim_node, "abstol", 1e-6)
+    data = Utilities.create_and_select_group(dt_group, "reltol=$(reltol); abstol=$(abstol)")
+    outgroup = sim_node["outgroup"]
+    if !dry
+        data = Utilities.create_and_select_group(data, outgroup)
+        Utilities.check_or_insert_value(data, "dt", sim.dt / units.time_unit)
+        Utilities.check_or_insert_value(data, "time_unit", units.time_unit)
+        Utilities.check_or_insert_value(data, "time", 0:sim.dt/units.time_unit:sim.nsteps*sim.dt/units.time_unit |> collect)
+        flush(data)
+
+        Hamiltonian = sys.Hamiltonian .+ diagm(sum([SpectralDensities.reorganization_energy(j) * bath.svecs[nb, :] .^ 2 for (nb, j) in enumerate(bath.Jw)])) 
+        sys_ops = [diagm(complex(bath.svecs[nb, :])) for nb = 1:size(bath.svecs, 1)]
+        ρ0 = ParseInput.parse_operator(sim_node["rho0"], sys.Hamiltonian)
+        @time _, ρs = BlochRedfield.propagate(; Hamiltonian, ρ0, sys_ops, Jw=bath.Jw, β=bath.β, dt=sim.dt, ntimes=sim.nsteps, extraargs=Utilities.DiffEqArgs(; reltol, abstol))
+        Utilities.check_or_insert_value(data, "rho", ρs)
+        flush(data)
+    end
+    data
+end
+
 function dynamics(::QDSimUtilities.Method"Forster", units::QDSimUtilities.Units, sys::QDSimUtilities.System, bath::QDSimUtilities.Bath, sim::QDSimUtilities.Simulation, dt_group::Union{Nothing,HDF5.Group}, sim_node; dry=false)
     if !dry
         @info "Running a Forster calculation. Please cite:"
@@ -227,7 +252,12 @@ function dynamics(::QDSimUtilities.Method"Forster", units::QDSimUtilities.Units,
         Utilities.check_or_insert_value(data, "time", 0:sim.dt/units.time_unit:sim.nsteps*sim.dt/units.time_unit |> collect)
         flush(data)
 
-        k, U = Forster.build_incoherent_propagator(; H=sys.Hamiltonian, Jw=bath.Jw, dt, β=bath.β, verbose=true)
+        Jw = Vector{SpectralDensities.SpectralDensity}(undef, length(bath.Jw))
+        for (ind, jw) in enumerate(bath.Jw)
+            target_ind = argmax(bath.svecs[ind, :])
+            Jw[target_ind] = deepcopy(jw)
+        end
+        k, U = Forster.build_incoherent_propagator(; H=sys.Hamiltonian, Jw, dt=sim.dt, β=bath.β, verbose=true)
         Utilities.check_or_insert_value(data, "k", k)
         Utilities.check_or_insert_value(data, "U", U)
     end
