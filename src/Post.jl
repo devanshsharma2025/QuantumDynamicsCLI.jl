@@ -54,8 +54,8 @@ function calculate_print_observable(::QDSimUtilities.Calculation"dynamics", sys:
         data_node = Simulate.calc(QDSimUtilities.Calculation(sim.calculation)(), sys, bath, sim, units, sim_node, method_group; dry=true)[outputdir]
         ts = read_dataset(data_node, "time")
         dt = (ts[2] - ts[1]) * units.time_unit
-        ωlim = π/dt
-        dω = π/(ts[end] * units.time_unit)
+        ωlim = π / dt
+        dω = π / (ts[end] * units.time_unit)
         ω = -ωlim:dω:ωlim
         ρs = read_dataset(data_node, "rho")
         num_obs = length(sim_node["observable"])
@@ -68,13 +68,42 @@ function calculate_print_observable(::QDSimUtilities.Calculation"dynamics", sys:
         vals = ft ? zeros(ComplexF64, length(ω), num_obs) : zeros(ComplexF64, length(ts), num_obs)
         values = ft ? zeros(ComplexF64, length(ω)) : zeros(ComplexF64, length(ts))
         for (os, obs) in enumerate(sim_node["observable"])
-            push!(names, obs["observable"])
+            if obs["observable"] != "state_to_state"
+                push!(names, obs["observable"])
+            end
             if obs["observable"] == "trace"
                 values .= [tr(ρs[j, :, :]) for j in axes(ρs, 1)]
             elseif obs["observable"] == "purity"
                 values .= [tr(ρs[j, :, :] * ρs[j, :, :]) for j in axes(ρs, 1)]
             elseif obs["observable"] == "vonNeumann_entropy"
-                values = [-tr(ρs[j, :, :] * log(ρs[j, :, :])) for j in axes(ρs, 1)]
+                values = [-tr(ρs[j, :, :] * log(ρs[j, :, :])) for j in axes(ρs, 1)] 
+            elseif obs["observable"] == "state_to_state"
+                H0 = sys.Hamiltonian
+                dim = size(H0, 1)
+                st = zeros(ComplexF64, dim, length(ts), dim)
+                for j in 1:dim
+                    for t in 1:length(ts)
+                        for k in 1:dim
+                            st[j, t, k] = 1im * Utilities.trapezoid(ts[1:t] * units.time_unit, (ρs[1:t, j, k] * (H0')[k, j] - H0[j, k] * ρs[1:t, k, j]))
+                        end
+                    end
+                end
+
+                obs_file = sim_node["observable_output"]
+                fname, ext = splitext(obs_file)
+
+                label = ["# From $(i) " for i in 1:dim]
+                label = vcat(["# t "], label)
+
+                for j in 1:dim
+                    res = hcat(ts, st[j, :, :])
+                    open("$(fname)_change_in_state_$(j)_real$(ext)", "w") do io
+                        writedlm(io, vcat(reshape(label, 1, :), real.(res)))
+                    end
+                    open("$(fname)_change_in_state_$(j)_imag$(ext)", "w") do io
+                        writedlm(io, vcat(reshape(label, 1, :), imag.(res)))
+                    end
+                end
             else
                 obs = ParseInput.parse_operator(obs["observable"], sys.Hamiltonian)
                 values = Utilities.expect(ρs, obs)
