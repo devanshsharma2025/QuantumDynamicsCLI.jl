@@ -68,9 +68,7 @@ function calculate_print_observable(::QDSimUtilities.Calculation"dynamics", sys:
         vals = ft ? zeros(ComplexF64, length(ω), num_obs) : zeros(ComplexF64, length(ts), num_obs)
         values = ft ? zeros(ComplexF64, length(ω)) : zeros(ComplexF64, length(ts))
         for (os, obs) in enumerate(sim_node["observable"])
-            if obs["observable"] != "state_to_state"
-                push!(names, obs["observable"])
-            end
+            push!(names, obs["observable"])
             if obs["observable"] == "trace"
                 values .= [tr(ρs[j, :, :]) for j in axes(ρs, 1)]
             elseif obs["observable"] == "purity"
@@ -92,8 +90,7 @@ function calculate_print_observable(::QDSimUtilities.Calculation"dynamics", sys:
                 obs_file = sim_node["observable_output"]
                 fname, ext = splitext(obs_file)
 
-                label = ["# From $(i) " for i in 1:dim]
-                label = vcat(["# t "], label)
+                label = vcat(["# t "], ["# From $(i) " for i in 1:dim])
 
                 for j in 1:dim
                     res = hcat(ts, st[j, :, :])
@@ -115,20 +112,29 @@ function calculate_print_observable(::QDSimUtilities.Calculation"dynamics", sys:
         obs_file = sim_node["observable_output"]
         fname, ext = splitext(obs_file)
 
+        print_obs = copy(names)
+        print_vals = copy(vals)
+        for (i,n) in enumerate(names)
+            if n=="state_to_state"
+                print_obs = print_obs[1:end .!=i]
+                print_vals = print_vals[:,1:end .!=i]
+            end
+        end
+
         open("$(fname)_real$(ext)", "w") do io
             if ft
                 write(io, "# (1)w ")
             else
                 write(io, "# (1)t ")
             end
-            for (j, n) in enumerate(names)
+            for (j, n) in enumerate(print_obs)
                 write(io, "($(j+1))$(n) ")
             end
             write(io, "\n")
             if ft
-                writedlm(io, [round.(ω ./ units.energy_unit; sigdigits=10) round.(real.(vals); sigdigits=10)])
+                writedlm(io, [round.(ω ./ units.energy_unit; sigdigits=10) round.(real.(print_vals); sigdigits=10)])
             else
-                writedlm(io, [round.(ts; sigdigits=10) round.(real.(vals); sigdigits=10)])
+                writedlm(io, [round.(ts; sigdigits=10) round.(real.(print_vals); sigdigits=10)])
             end
         end
 
@@ -138,14 +144,14 @@ function calculate_print_observable(::QDSimUtilities.Calculation"dynamics", sys:
             else
                 write(io, "# (1)t ")
             end
-            for (j, n) in enumerate(names)
+            for (j, n) in enumerate(print_obs)
                 write(io, "($(j+1))$(n) ")
             end
             write(io, "\n")
             if ft
-                writedlm(io, [round.(ω ./ units.energy_unit; sigdigits=10) round.(imag.(vals); sigdigits=10)])
+                writedlm(io, [round.(ω ./ units.energy_unit; sigdigits=10) round.(imag.(print_vals); sigdigits=10)])
             else
-                writedlm(io, [round.(ts; sigdigits=10) round.(imag.(vals); sigdigits=10)])
+                writedlm(io, [round.(ts; sigdigits=10) round.(imag.(print_vals); sigdigits=10)])
             end
         end
     end
