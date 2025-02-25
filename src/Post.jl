@@ -58,24 +58,16 @@ function calculate_print_observable(::QDSimUtilities.Calculation"dynamics", sys:
         dω = π / (ts[end] * units.time_unit)
         ω = -ωlim:dω:ωlim
         ρs = read_dataset(data_node, "rho")
-        num_obs = length(sim_node["observable"])
         names = String[]
         ft = get(sim_node, "fourier_transform", false)
         full = true
         if ft
             full = get(sim_node, "full_transform", true)
         end
-        vals = ft ? zeros(ComplexF64, length(ω), num_obs) : zeros(ComplexF64, length(ts), num_obs)
         values = ft ? zeros(ComplexF64, length(ω)) : zeros(ComplexF64, length(ts))
+        val_out = ft ? ω ./ units.energy_unit : ts
         for (os, obs) in enumerate(sim_node["observable"])
-            push!(names, obs["observable"])
-            if obs["observable"] == "trace"
-                values .= [tr(ρs[j, :, :]) for j in axes(ρs, 1)]
-            elseif obs["observable"] == "purity"
-                values .= [tr(ρs[j, :, :] * ρs[j, :, :]) for j in axes(ρs, 1)]
-            elseif obs["observable"] == "vonNeumann_entropy"
-                values = [-tr(ρs[j, :, :] * log(ρs[j, :, :])) for j in axes(ρs, 1)] 
-            elseif obs["observable"] == "state_to_state"
+            if obs["observable"] == "state_to_state"
                 H0 = sys.Hamiltonian
                 dim = size(H0, 1)
                 st = zeros(ComplexF64, dim, length(ts), dim)
@@ -93,65 +85,58 @@ function calculate_print_observable(::QDSimUtilities.Calculation"dynamics", sys:
                 label = vcat(["# t "], ["# From $(i) " for i in 1:dim])
 
                 for j in 1:dim
-                    res = hcat(ts, st[j, :, :])
                     open("$(fname)_change_in_state_$(j)_real$(ext)", "w") do io
-                        writedlm(io, vcat(reshape(label, 1, :), real.(res)))
+			    writedlm(io, vcat(reshape(label, 1, :), hcat(round.(ts; sigdigits=10), real.(st[j,:,:]))))
                     end
                     open("$(fname)_change_in_state_$(j)_imag$(ext)", "w") do io
-                        writedlm(io, vcat(reshape(label, 1, :), imag.(res)))
+			    writedlm(io, vcat(reshape(label, 1, :), hcat(round.(ts; sigdigits=10), imag.(st[j,:,:]))))
                     end
                 end
             else
-                obs = ParseInput.parse_operator(obs["observable"], sys.Hamiltonian)
-                values = Utilities.expect(ρs, obs)
-            end
-            _, valft = ft ? Utilities.fourier_transform(ts, values; full=full) : (ts, values)
-            vals[:, os] .= ft ? valft : valft
-        end
-
-        obs_file = sim_node["observable_output"]
-        fname, ext = splitext(obs_file)
-
-        print_obs = copy(names)
-        print_vals = copy(vals)
-        for (i,n) in enumerate(names)
-            if n=="state_to_state"
-                print_obs = print_obs[1:end .!=i]
-                print_vals = print_vals[:,1:end .!=i]
+                push!(names, obs["observable"])
+                if obs["observable"] == "trace"
+                    values .= [tr(ρs[j, :, :]) for j in axes(ρs, 1)]
+                elseif obs["observable"] == "purity"
+                    values .= [tr(ρs[j, :, :] * ρs[j, :, :]) for j in axes(ρs, 1)]
+                elseif obs["observable"] == "vonNeumann_entropy"
+                    values = [-tr(ρs[j, :, :] * log(ρs[j, :, :])) for j in axes(ρs, 1)] 
+                else
+                    obs = ParseInput.parse_operator(obs["observable"], sys.Hamiltonian)
+                    values = Utilities.expect(ρs, obs)
+                end
+                _, valft = ft ? Utilities.fourier_transform(ts, values; full=full) : (ts, values)
+                val_out = hcat(val_out,valft)
             end
         end
 
-        open("$(fname)_real$(ext)", "w") do io
-            if ft
-                write(io, "# (1)w ")
-            else
-                write(io, "# (1)t ")
-            end
-            for (j, n) in enumerate(print_obs)
-                write(io, "($(j+1))$(n) ")
-            end
-            write(io, "\n")
-            if ft
-                writedlm(io, [round.(ω ./ units.energy_unit; sigdigits=10) round.(real.(print_vals); sigdigits=10)])
-            else
-                writedlm(io, [round.(ts; sigdigits=10) round.(real.(print_vals); sigdigits=10)])
-            end
-        end
+        if !isempty(names)
+            obs_file = sim_node["observable_output"]
+            fname, ext = splitext(obs_file)
 
-        open("$(fname)_imag$(ext)", "w") do io
-            if ft
-                write(io, "# (1)w ")
-            else
-                write(io, "# (1)t ")
+            open("$(fname)_real$(ext)", "w") do io
+                if ft
+                    write(io, "# (1)w ")
+                else
+                    write(io, "# (1)t ")
+                end
+                for (j, n) in enumerate(names)
+                    write(io, "($(j+1))$(n) ")
+                end
+                write(io, "\n")
+		writedlm(io, round.(real.(val_out); sigdigits=10))
             end
-            for (j, n) in enumerate(print_obs)
-                write(io, "($(j+1))$(n) ")
-            end
-            write(io, "\n")
-            if ft
-                writedlm(io, [round.(ω ./ units.energy_unit; sigdigits=10) round.(imag.(print_vals); sigdigits=10)])
-            else
-                writedlm(io, [round.(ts; sigdigits=10) round.(imag.(print_vals); sigdigits=10)])
+
+            open("$(fname)_imag$(ext)", "w") do io
+                if ft
+                    write(io, "# (1)w ")
+                else
+                    write(io, "# (1)t ")
+                end
+                for (j, n) in enumerate(names)
+                    write(io, "($(j+1))$(n) ")
+                end
+                write(io, "\n")
+		writedlm(io, round.(hcat(real.(val_out[:,1]),imag.(val_out[:,2:end])); sigdigits=10))
             end
         end
     end
