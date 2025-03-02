@@ -41,8 +41,7 @@ After the package gets built, an executable called `qdsim` will be placed in `$H
 While QuantumDynamicsCLI.jl builds on top of the QuantumDynamics.jl package, separate installation of that package is unnecessary. Just installing QuantumDynamicsCLI.jl would install QuantumDynamics.jl as a dependency.
 
 ## Basic Usage
-`qdsim` follows a modular structure. The general syntax is as follows:
-
+`qdsim` comes as a single program with multiple sub-components. These components can call each other, but are mostly meant for the end-user, and are used for running simulations and post-processing the data. The general syntax for running any particular component is as follows:
 ```bash
 > qdsim <component_name> <command_name> <arguments>
 ```
