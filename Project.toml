@@ -6,6 +6,7 @@ version = "0.2.0"
 [deps]
 Comonicon = "863f3e99-da2a-4334-8734-de3dacbe5542"
 DelimitedFiles = "8bb1440f-4735-579b-a4ab-409b98df4dab"
+Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 FoldsThreads = "9c68100b-dfe1-47cf-94c8-95104e173443"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 MKL = "33e6dc65-8f57-5167-99aa-e5a354878fb2"
@@ -17,11 +18,12 @@ UnitfulAtomic = "a7773ee8-282e-5fa2-be4e-bd808c38a91a"
 [compat]
 Comonicon = "1"
 DelimitedFiles = "1"
+Documenter = "1.8.1"
 FoldsThreads = "0.1"
 MKL = "0.7"
+QuantumDynamics = "0.2.26"
 Unitful = "1"
 UnitfulAtomic = "1"
-QuantumDynamics = "0.2.26"
 julia = "1.9"
 
 [extras]
