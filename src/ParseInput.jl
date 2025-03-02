@@ -30,7 +30,7 @@ function parse_unit(input_dict)
         if energy_unit_name == "cm^-1"
             energy_unit_val *= Unitful.c * Unitful.h
         end
-        time_unit_val = uparse(time_unit_name)
+        time_unit_val = time_unit_name != "au" ? uparse(time_unit_name) : Unitful.hbar * 1u"ha^-1"
 
         energy_unit = austrip(1 * energy_unit_val)
         time_unit = austrip(1 * time_unit_val)
