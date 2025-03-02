@@ -51,3 +51,17 @@ Currently, two `command`s are supported:
 - `post`: provides post-processing tools for the output
 
 The most important sub-command of `simulate` is `run`, and for `post` is `get-observable`.
+
+## Types of Simulations
+The primary focus of the qdsim application provided by the QuantumDynamicsCLI.jl package and the underlying QuantumDynamics.jl package is the simulation of dynamics and spectra of open quantum systems. New methods are consistently added and the support for old methods improved. Currently the following methods are supported:
+- Iterative Quasi-adiabatic Propagators Path Integral (iQuAPI)
+- Blip QuAPI
+- Time-Evolved Matrix Product Operators (TEMPO)
+- Pairwise-Connected Tensor Network Path Integral (PC-TNPI)
+- standard Hierarchical Equations of Motion (HEOM)
+- scaled HEOM
+- Transfer Tensor Method coupled with any of the path integral methods
+- Generalized Quantum Master Equation (GQME)
+- Multichromophore Incoherent Forster Theory
+- Bloch-Redfield Master Equation
+- Lindblad Master Equation
