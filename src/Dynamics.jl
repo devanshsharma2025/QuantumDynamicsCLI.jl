@@ -4,9 +4,9 @@ using LinearAlgebra
 using QuantumDynamics
 using ..QDSimUtilities, ..ParseInput
 
-function dynamics(::QDSimUtilities.Method"TNPI-TTM", units::QDSimUtilities.Units, sys::QDSimUtilities.System, bath::QDSimUtilities.Bath, sim::QDSimUtilities.Simulation, dt_group::Union{Nothing,HDF5.Group}, sim_node; dry=false)
+function dynamics(::QDSimUtilities.Method"TEMPO-TTM", units::QDSimUtilities.Units, sys::QDSimUtilities.System, bath::QDSimUtilities.Bath, sim::QDSimUtilities.Simulation, dt_group::Union{Nothing,HDF5.Group}, sim_node; dry=false)
     if !dry
-        @info "Running a TEMPO / TNPI dynamics calculation with TTM. Please cite:"
+        @info "Running a TEMPO dynamics calculation with TTM. Please cite:"
         QDSimUtilities.print_citation(TEMPO.references)
         QDSimUtilities.print_citation(TTM.references)
     end

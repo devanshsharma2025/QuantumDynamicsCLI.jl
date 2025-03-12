@@ -84,12 +84,16 @@ end
         ts = read_dataset(data_node, "time") * units.time_unit
         dt = ts[2] - ts[1]
         fbU = Propagators.calculate_bare_propagators(; Hamiltonian, dt)
+        num_tmats_used = get(sim_node, "num_tmats_used", -1)
         Ts = read_dataset(data_node, "T0e")
+        if num_tmats_used != -1
+            Ts = Ts[1:num_tmats_used, :, :]
+        end
         Ks = TTM.get_memory_kernel(Ts, fbU[1, :, :], dt)
 
         if haskey(sim_node, "lindblad")
             decayconstant = [sim_node["decay_constant"][i] for i in 1:length(sim_node["decay_constant"])]
-            L = [ParseInput.parse_operator(sim_node["lindblad"][i], Hamiltonian) / sqrt(decayconstant[i] * time_unit) for i in 1:length(sim_node["decay_constant"])]
+            L = [ParseInput.parse_operator(sim_node["lindblad"][i], Hamiltonian) / sqrt(decayconstant[i] * units.time_unit) for i in 1:length(sim_node["decay_constant"])]
         else
             L = nothing
         end
