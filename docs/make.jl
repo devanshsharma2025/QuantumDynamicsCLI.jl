@@ -5,7 +5,6 @@ makedocs(
     modules=[QuantumDynamicsCLI],
     sitename="QuantumDynamicsCLI.jl",
     pages=[
-        "Bose Research Group" => "https://amartyabose.github.io/",
         "Introduction" => "index.md",
         "Documentation" => [
             "Simulate Module" => "./documentation/Simulate.md",

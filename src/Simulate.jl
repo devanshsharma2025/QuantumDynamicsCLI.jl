@@ -26,6 +26,11 @@ function calc(::QDSimUtilities.Calculation"complex_corr", sys::QDSimUtilities.Sy
     Equilibrium.complex_time_correlation_function(QDSimUtilities.Method(sim.method)(), units, sys, bath, sim, dat_group, sim_node; dry)
 end
 
+"""
+    propagate_using_tmats(system_input, simulate_input)
+
+Propagate a particular density matrix using the transfer tensors generated in a previous path integral simulation.
+"""
 @cast function propagate_using_tmats(system_input, simulate_input)
     QDSimUtilities.print_banner()
     @info "Using $(Utilities.get_BLAS_implementation()) for linear algebra."
@@ -64,6 +69,11 @@ end
     end
 end
 
+"""
+    propagate_using_gqme(system_input, simulate_input)
+
+Propagate a particular density matrix using the generalized quantum master equation. The memory kernel is derived from a previous path integral simulation via the transfer tensor method.
+"""
 @cast function propagate_using_gqme(system_input, simulate_input)
     QDSimUtilities.print_banner()
     @info "Using $(Utilities.get_BLAS_implementation()) for linear algebra."
@@ -114,6 +124,11 @@ end
     end
 end
 
+"""
+    run(system_input, simulate_input)
+
+Run a simulation as specified in the `simulation_input` TOML file on the system specified in the `system_input` TOML file.
+"""
 @cast function run(system_input, simulate_input)
     QDSimUtilities.print_banner()
 

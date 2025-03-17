@@ -188,6 +188,7 @@ end
 function dynamics(::QDSimUtilities.Method"HEOM", units::QDSimUtilities.Units, sys::QDSimUtilities.System, bath::QDSimUtilities.Bath, sim::QDSimUtilities.Simulation, dt_group::Union{Nothing,HDF5.Group}, sim_node; dry=false)
     if !dry
         @info "Running a HEOM calculation."
+        QDSimUtilities.print_citation(HEOM.references)
     end
     num_modes = sim_node["num_modes"]
     Lmax = sim_node["Lmax"]
@@ -209,7 +210,15 @@ function dynamics(::QDSimUtilities.Method"HEOM", units::QDSimUtilities.Units, sy
         Hamiltonian = sys.Hamiltonian .+ diagm(sum([SpectralDensities.reorganization_energy(j) * bath.svecs[nb, :] .^ 2 for (nb, j) in enumerate(bath.Jw)])) 
         sys_ops = [diagm(complex(bath.svecs[nb, :])) for nb = 1:size(bath.svecs, 1)]
         ρ0 = ParseInput.parse_operator(sim_node["rho0"], sys.Hamiltonian)
-        @time _, ρs = HEOM.propagate(; Hamiltonian, ρ0, sys_ops, Jw=bath.Jw, β=bath.β, num_modes, Lmax, dt=sim.dt, ntimes=sim.nsteps, threshold, extraargs=Utilities.DiffEqArgs(; reltol, abstol))
+
+        if haskey(sim_node, "lindblad")
+            decayconstant = [sim_node["decay_constant"][i] for i in 1:length(sim_node["decay_constant"])]
+            L = [ParseInput.parse_operator(sim_node["lindblad"][i], Hamiltonian) / sqrt(decayconstant[i] * units.time_unit) for i in 1:length(sim_node["decay_constant"])]
+        else
+            L = nothing
+        end
+
+        @time _, ρs = HEOM.propagate(; Hamiltonian, ρ0, sys_ops, Jw=bath.Jw, β=bath.β, num_modes, Lmax, dt=sim.dt, ntimes=sim.nsteps, threshold, L, extraargs=Utilities.DiffEqArgs(; reltol, abstol))
         Utilities.check_or_insert_value(data, "rho", ρs)
         flush(data)
     end
