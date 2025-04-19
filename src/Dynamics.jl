@@ -32,7 +32,14 @@ function dynamics(::QDSimUtilities.Method"TEMPO-TTM", units::QDSimUtilities.Unit
         Utilities.check_or_insert_value(data, "time", 0:sim.dt/units.time_unit:rmax*sim.dt/units.time_unit |> collect)
         flush(data)
         extraargs = TEMPO.TEMPOArgs(; cutoff, maxdim, algorithm)
-        fbU = Propagators.calculate_bare_propagators(; Hamiltonian=sys.Hamiltonian, dt=sim.dt, ntimes=rmax)
+        if haskey(sim_node, "lindblad")
+            decayconstant = [sim_node["decay_constant"][i] for i in 1:length(sim_node["decay_constant"])]
+            L = [ParseInput.parse_operator(sim_node["lindblad"][i], sys.Hamiltonian) / sqrt(decayconstant[i] * units.time_unit) for i in 1:length(sim_node["decay_constant"])]
+        else
+            L = nothing
+        end
+
+        fbU = Propagators.calculate_bare_propagators(; Hamiltonian=sys.Hamiltonian, dt=sim.dt, ntimes=rmax, L)
         Utilities.check_or_insert_value(data, "fbU", fbU)
         flush(data)
         TEMPO.build_augmented_propagator(; fbU, Jw=bath.Jw, β=bath.β, dt=sim.dt, ntimes=rmax, kmax, extraargs, svec=bath.svecs, verbose=true, output=data)
@@ -62,7 +69,14 @@ function dynamics(::QDSimUtilities.Method"QuAPI-TTM", units::QDSimUtilities.Unit
         flush(data)
 
         extraargs = QuAPI.QuAPIArgs(; cutoff)
-        fbU = Propagators.calculate_bare_propagators(; Hamiltonian=sys.Hamiltonian, dt=sim.dt, ntimes=rmax)
+        if haskey(sim_node, "lindblad")
+            decayconstant = [sim_node["decay_constant"][i] for i in 1:length(sim_node["decay_constant"])]
+            L = [ParseInput.parse_operator(sim_node["lindblad"][i], sys.Hamiltonian) / sqrt(decayconstant[i] * units.time_unit) for i in 1:length(sim_node["decay_constant"])]
+        else
+            L = nothing
+        end
+
+        fbU = Propagators.calculate_bare_propagators(; Hamiltonian=sys.Hamiltonian, dt=sim.dt, ntimes=rmax, L)
         Utilities.check_or_insert_value(data, "fbU", fbU)
         flush(data)
         QuAPI.build_augmented_propagator(; fbU, Jw=bath.Jw, β=bath.β, dt=sim.dt, ntimes=rmax, extraargs, svec=bath.svecs, verbose=true, output=data, exec=QDSimUtilities.parse_exec(exec))
@@ -139,7 +153,14 @@ function dynamics(::QDSimUtilities.Method"Blip-TTM", units::QDSimUtilities.Units
         flush(data)
 
         extraargs = Blip.BlipArgs(; max_blips, num_changes)
-        fbU = Propagators.calculate_bare_propagators(; Hamiltonian=sys.Hamiltonian, dt=sim.dt, ntimes=rmax)
+        if haskey(sim_node, "lindblad")
+            decayconstant = [sim_node["decay_constant"][i] for i in 1:length(sim_node["decay_constant"])]
+            L = [ParseInput.parse_operator(sim_node["lindblad"][i], sys.Hamiltonian) / sqrt(decayconstant[i] * units.time_unit) for i in 1:length(sim_node["decay_constant"])]
+        else
+            L = nothing
+        end
+
+        fbU = Propagators.calculate_bare_propagators(; Hamiltonian=sys.Hamiltonian, dt=sim.dt, ntimes=rmax, L)
         Utilities.check_or_insert_value(data, "fbU", fbU)
         flush(data)
         Blip.build_augmented_propagator(; fbU, Jw=bath.Jw, β=bath.β, dt=sim.dt, ntimes=rmax, extraargs, svec=bath.svecs, verbose=true, output=data, exec=QDSimUtilities.parse_exec(exec))
