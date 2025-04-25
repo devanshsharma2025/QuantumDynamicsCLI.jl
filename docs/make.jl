@@ -7,6 +7,7 @@ makedocs(
     pages=[
         "Introduction" => "index.md",
         "Documentation" => [
+            "qdsim Inputs" => "./documentation/ParseInput.md",
             "Simulate Module" => "./documentation/Simulate.md",
             "Post Module" => "./documentation/Post.md",
             "Comonicon" => "./documentation/ComonIcon.md",
