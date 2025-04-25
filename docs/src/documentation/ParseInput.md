@@ -41,13 +41,16 @@ There are broadly three types of simulations that are currently supported:
 
 ### Dynamics Simulations
 Various methods of simulation are supported:
-- Path Integral Methods:
-    - Quasi-adiabatic Propagator Path Integrals
-    - TEMPO
-- HEOM
+- Path Integral Methods based on Feynman-Vernon Influence Functional[feynmanTheoryGeneralQuantum1963](@cite):
+    - Quasi-adiabatic Propagator Path Integrals (QuAPI)
+    - Blip QuAPI
+    - Time-Evolved Matrix Product Operators (TEMPO)
+    - Pairwise-Connected Tensor Network Path Integral (PC-TNPI)
+- Hierarchical Equations of Motion (HEOM)
 - Generalized Quantum Master Equation
 - Multichromophore Incoherest Forster Theory
 - Bloch-Redfield Master Equation
+- Transfer Tensor Method coupled with any of the path integral methods
 
 All of these methods require some core common parameters and then more specfic method-dependent parameters. The core parameters of all the dynamics methods are:
 - `dt`: for the time-step
