@@ -4,9 +4,12 @@ using LinearAlgebra
 using QuantumDynamics
 using ..QDSimUtilities, ..ParseInput
 
-function dynamics(::QDSimUtilities.Method"TNPI-TTM", units::QDSimUtilities.Units, sys::QDSimUtilities.System, bath::QDSimUtilities.Bath, sim::QDSimUtilities.Simulation, dt_group::Union{Nothing,HDF5.Group}, sim_node; dry=false)
+const PILD_reference = """
+- A. Bose, “Incorporation of Empirical Gain and Loss Mechanisms in Open Quantum Systems through Path Integral Lindblad Dynamics,” J. Phys. Chem. Lett. 15(12), 3363–3368 (2024)."""
+
+function dynamics(::QDSimUtilities.Method"TEMPO-TTM", units::QDSimUtilities.Units, sys::QDSimUtilities.System, bath::QDSimUtilities.Bath, sim::QDSimUtilities.Simulation, dt_group::Union{Nothing,HDF5.Group}, sim_node; dry=false)
     if !dry
-        @info "Running a TEMPO / TNPI dynamics calculation with TTM. Please cite:"
+        @info "Running a TEMPO dynamics calculation with TTM. Please cite:"
         QDSimUtilities.print_citation(TEMPO.references)
         QDSimUtilities.print_citation(TTM.references)
     end
@@ -32,7 +35,16 @@ function dynamics(::QDSimUtilities.Method"TNPI-TTM", units::QDSimUtilities.Units
         Utilities.check_or_insert_value(data, "time", 0:sim.dt/units.time_unit:rmax*sim.dt/units.time_unit |> collect)
         flush(data)
         extraargs = TEMPO.TEMPOArgs(; cutoff, maxdim, algorithm)
-        fbU = Propagators.calculate_bare_propagators(; Hamiltonian=sys.Hamiltonian, dt=sim.dt, ntimes=rmax)
+        if haskey(sim_node, "lindblad")
+            @info "Using the PILD method."
+            QDSimUtilities.print_citation(PILD_reference)
+            decayconstant = [sim_node["decay_constant"][i] for i in 1:length(sim_node["decay_constant"])]
+            L = [ParseInput.parse_operator(sim_node["lindblad"][i], sys.Hamiltonian) / sqrt(decayconstant[i] * units.time_unit) for i in 1:length(sim_node["decay_constant"])]
+        else
+            L = nothing
+        end
+
+        fbU = Propagators.calculate_bare_propagators(; Hamiltonian=sys.Hamiltonian, dt=sim.dt, ntimes=rmax, L)
         Utilities.check_or_insert_value(data, "fbU", fbU)
         flush(data)
         TEMPO.build_augmented_propagator(; fbU, Jw=bath.Jw, β=bath.β, dt=sim.dt, ntimes=rmax, kmax, extraargs, svec=bath.svecs, verbose=true, output=data)
@@ -62,7 +74,16 @@ function dynamics(::QDSimUtilities.Method"QuAPI-TTM", units::QDSimUtilities.Unit
         flush(data)
 
         extraargs = QuAPI.QuAPIArgs(; cutoff)
-        fbU = Propagators.calculate_bare_propagators(; Hamiltonian=sys.Hamiltonian, dt=sim.dt, ntimes=rmax)
+        if haskey(sim_node, "lindblad")
+            @info "Using the PILD method."
+            QDSimUtilities.print_citation(PILD_reference)
+            decayconstant = [sim_node["decay_constant"][i] for i in 1:length(sim_node["decay_constant"])]
+            L = [ParseInput.parse_operator(sim_node["lindblad"][i], sys.Hamiltonian) / sqrt(decayconstant[i] * units.time_unit) for i in 1:length(sim_node["decay_constant"])]
+        else
+            L = nothing
+        end
+
+        fbU = Propagators.calculate_bare_propagators(; Hamiltonian=sys.Hamiltonian, dt=sim.dt, ntimes=rmax, L)
         Utilities.check_or_insert_value(data, "fbU", fbU)
         flush(data)
         QuAPI.build_augmented_propagator(; fbU, Jw=bath.Jw, β=bath.β, dt=sim.dt, ntimes=rmax, extraargs, svec=bath.svecs, verbose=true, output=data, exec=QDSimUtilities.parse_exec(exec))
@@ -139,7 +160,16 @@ function dynamics(::QDSimUtilities.Method"Blip-TTM", units::QDSimUtilities.Units
         flush(data)
 
         extraargs = Blip.BlipArgs(; max_blips, num_changes)
-        fbU = Propagators.calculate_bare_propagators(; Hamiltonian=sys.Hamiltonian, dt=sim.dt, ntimes=rmax)
+        if haskey(sim_node, "lindblad")
+            @info "Using the PILD method."
+            QDSimUtilities.print_citation(PILD_reference)
+            decayconstant = [sim_node["decay_constant"][i] for i in 1:length(sim_node["decay_constant"])]
+            L = [ParseInput.parse_operator(sim_node["lindblad"][i], sys.Hamiltonian) / sqrt(decayconstant[i] * units.time_unit) for i in 1:length(sim_node["decay_constant"])]
+        else
+            L = nothing
+        end
+
+        fbU = Propagators.calculate_bare_propagators(; Hamiltonian=sys.Hamiltonian, dt=sim.dt, ntimes=rmax, L)
         Utilities.check_or_insert_value(data, "fbU", fbU)
         flush(data)
         Blip.build_augmented_propagator(; fbU, Jw=bath.Jw, β=bath.β, dt=sim.dt, ntimes=rmax, extraargs, svec=bath.svecs, verbose=true, output=data, exec=QDSimUtilities.parse_exec(exec))
@@ -185,9 +215,55 @@ function dynamics(::QDSimUtilities.Method"adaptive-kinks-QuAPI", units::QDSimUti
     data
 end
 
+function dynamics(::QDSimUtilities.Method"TEMPO", units::QDSimUtilities.Units, sys::QDSimUtilities.System, bath::QDSimUtilities.Bath, sim::QDSimUtilities.Simulation, dt_group::Union{Nothing,HDF5.Group}, sim_node; dry=false)
+    if !dry
+        @info "Running a TEMPO dynamics calculation. Please cite:"
+        QDSimUtilities.print_citation(TEMPO.references)
+    end
+    kmax = sim_node["kmax"]
+    cutoff = get(sim_node, "cutoff", 1e-10)
+    maxdim = get(sim_node, "maxdim", 1000)
+    algorithm = get(sim_node, "algorithm", "naive")
+    @info "Running with $(BLAS.get_num_threads()) threads."
+
+    kmax_group = Utilities.create_and_select_group(dt_group, "kmax=$(kmax)")
+    maxdim_group = Utilities.create_and_select_group(kmax_group, "maxdim=$(maxdim)")
+    cutoff_group = Utilities.create_and_select_group(maxdim_group, "cutoff=$(cutoff)")
+    data = Utilities.create_and_select_group(cutoff_group, "algorithm=$(algorithm)")
+
+    outgroup = sim_node["outgroup"]
+
+    if !dry
+        outgrouphdf5 = Utilities.create_and_select_group(data, outgroup)
+        Utilities.check_or_insert_value(data, "dt", sim.dt / units.time_unit)
+        Utilities.check_or_insert_value(data, "time_unit", units.time_unit)
+        Utilities.check_or_insert_value(data, "time", 0:sim.dt/units.time_unit:sim.nsteps*sim.dt/units.time_unit |> collect)
+        Utilities.check_or_insert_value(outgrouphdf5, "time_unit", units.time_unit)
+        Utilities.check_or_insert_value(outgrouphdf5, "time", 0:sim.dt/units.time_unit:sim.nsteps*sim.dt/units.time_unit |> collect)
+        flush(data)
+        extraargs = TEMPO.TEMPOArgs(; cutoff, maxdim, algorithm)
+        if haskey(sim_node, "lindblad")
+            @info "Using the PILD method."
+            QDSimUtilities.print_citation(PILD_reference)
+            decayconstant = [sim_node["decay_constant"][i] for i in 1:length(sim_node["decay_constant"])]
+            L = [ParseInput.parse_operator(sim_node["lindblad"][i], sys.Hamiltonian) / sqrt(decayconstant[i] * units.time_unit) for i in 1:length(sim_node["decay_constant"])]
+        else
+            L = nothing
+        end
+
+        fbU = Propagators.calculate_bare_propagators(; Hamiltonian=sys.Hamiltonian, dt=sim.dt, ntimes=sim.nsteps, L)
+        Utilities.check_or_insert_value(data, "fbU", fbU)
+        flush(data)
+        ρ0 = ParseInput.parse_operator(sim_node["rho0"], sys.Hamiltonian)
+        TEMPO.propagate(; fbU, Jw=bath.Jw, β=bath.β, ρ0, dt=sim.dt, ntimes=sim.nsteps, kmax, extraargs, svec=bath.svecs, verbose=true, output=data, outgroup=outgroup)
+    end
+    data
+end
+
 function dynamics(::QDSimUtilities.Method"HEOM", units::QDSimUtilities.Units, sys::QDSimUtilities.System, bath::QDSimUtilities.Bath, sim::QDSimUtilities.Simulation, dt_group::Union{Nothing,HDF5.Group}, sim_node; dry=false)
     if !dry
         @info "Running a HEOM calculation."
+        QDSimUtilities.print_citation(HEOM.references)
     end
     num_modes = sim_node["num_modes"]
     Lmax = sim_node["Lmax"]
@@ -209,7 +285,17 @@ function dynamics(::QDSimUtilities.Method"HEOM", units::QDSimUtilities.Units, sy
         Hamiltonian = sys.Hamiltonian .+ diagm(sum([SpectralDensities.reorganization_energy(j) * bath.svecs[nb, :] .^ 2 for (nb, j) in enumerate(bath.Jw)])) 
         sys_ops = [diagm(complex(bath.svecs[nb, :])) for nb = 1:size(bath.svecs, 1)]
         ρ0 = ParseInput.parse_operator(sim_node["rho0"], sys.Hamiltonian)
-        @time _, ρs = HEOM.propagate(; Hamiltonian, ρ0, sys_ops, Jw=bath.Jw, β=bath.β, num_modes, Lmax, dt=sim.dt, ntimes=sim.nsteps, threshold, extraargs=Utilities.DiffEqArgs(; reltol, abstol))
+
+        if haskey(sim_node, "lindblad")
+            @info "Using the PILD method."
+            QDSimUtilities.print_citation(PILD_reference)
+            decayconstant = [sim_node["decay_constant"][i] for i in 1:length(sim_node["decay_constant"])]
+            L = [ParseInput.parse_operator(sim_node["lindblad"][i], Hamiltonian) / sqrt(decayconstant[i] * units.time_unit) for i in 1:length(sim_node["decay_constant"])]
+        else
+            L = nothing
+        end
+
+        @time _, ρs = HEOM.propagate(; Hamiltonian, ρ0, sys_ops, Jw=bath.Jw, β=bath.β, num_modes, Lmax, dt=sim.dt, ntimes=sim.nsteps, threshold, L, extraargs=Utilities.DiffEqArgs(; reltol, abstol))
         Utilities.check_or_insert_value(data, "rho", ρs)
         flush(data)
     end

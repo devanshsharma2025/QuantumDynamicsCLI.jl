@@ -19,9 +19,9 @@ Comonicon = "1"
 DelimitedFiles = "1"
 FoldsThreads = "0.1"
 MKL = "0.7"
+QuantumDynamics = "0.2.26"
 Unitful = "1"
 UnitfulAtomic = "1"
-QuantumDynamics = "0.2.26"
 julia = "1.9"
 
 [extras]

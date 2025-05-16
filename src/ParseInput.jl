@@ -16,6 +16,14 @@ function read_matrix(fname::String, mat_type::String="real")
     end
 end
 
+"""
+    parse_unit(input_dict)
+Parses the `[units]` section of the `system` TOML file. It takes two variables:
+
+Parameters obtained:
+- `energy_unit_name` [Default: `ha`]: Specifies the energy units. Typically `eV`, `meV`, `cm^-1`, or `ha`.
+- `time_unit_name` [Default: `au`]: Specifies the time units. Typically `fs`, or `au`.
+"""
 function parse_unit(input_dict)
     energy_unit = 1.0
     energy_unit_name = "ha"
@@ -30,7 +38,7 @@ function parse_unit(input_dict)
         if energy_unit_name == "cm^-1"
             energy_unit_val *= Unitful.c * Unitful.h
         end
-        time_unit_val = uparse(time_unit_name)
+        time_unit_val = time_unit_name != "au" ? uparse(time_unit_name) : Unitful.hbar * 1u"ha^-1"
 
         energy_unit = austrip(1 * energy_unit_val)
         time_unit = austrip(1 * time_unit_val)
@@ -39,6 +47,25 @@ function parse_unit(input_dict)
     QDSimUtilities.Units(energy_unit, energy_unit_name, time_unit, time_unit_name)
 end
 
+"""
+    parse_system(sys_inp, unit)
+Parses the `[system]` portion of the system file for the Hamiltonian and converts it to atomic units for internal use.
+
+Parameters obtained:
+- `Htype` [Default: `file`]: How to parse the Hamiltonian file. Typically `file` to read a file, `nearest_neighbor` to specify the Hamiltonian as a nearest-neighbor tight-binding model, or `nearest_neighbor_cavity` for a Hamiltonian consisting of a nearest-neighbor tight-binding part and a cavity with interacts with all the sites.
+
+Then the Hamiltonian needs to be specified in the energy units that are being used. This can be done in several ways depending on the value of `Htype`:
+- if `Htype` = `file`, put in the variable, `Hamiltonian` with the name of a file containing the elements of the Hamiltonian matrix.
+- if `Htype = "nearest_neighbor"`, specify the following variables:
+    - `site_energy`: the energy of each site
+    - `coupling`: the intersite coupling element
+    - `num_sites`: the number of sites
+- if `Htype = "nearest_neighbor_cavity"`, in addition to the same variables as the `Htype = "nearest_neighbor"` case, also specify:
+    - `cavity_energy`: the energy of the cavity mode
+    - `cavity_coupling`: coupling of the cavity to the monomers
+
+Finally a parameter `is_QuAPI` [Default: `true`] specifies if the specified system Hamiltonian should be interpreted to be a part of the QuAPI system-bath Hamiltonian form or not.
+"""
 function parse_system(sys_inp, unit)
     Htype = get(sys_inp, "Htype", "file")
     H0 = if Htype == "file"
@@ -68,6 +95,29 @@ function parse_system(sys_inp, unit)
     QDSimUtilities.System(Htype, H0, ρ0)
 end
 
+"""
+    get_bath(b, unit)
+Parse individual baths
+
+Parameters:
+- `type` [Default: `ohmic`]: Type of harmonic bath. Can be `ohmic`, `drude_lorentz`, `tabular`, `tabular_jw_over_w`, `huang_rhys`
+
+The parameters for the bath are specified in different ways for each different bath:
+- if `type="ohmic"`, the bath spectral density ``J(\\omega)=\\frac{2\\pi}{\\Delta s^2}\\hbar\\xi\\omega_c\\exp\\left(-\\frac{\\omega}{\\omega_c}\\right)``
+    - `xi`: dimensionless Kondo parameter (``\\xi``)
+    - `omegac`: cutoff frequency (``\\omega_c``) in energy units
+    - `Ds` [Default: 2]: ``\\Delta s`` value. Typically set to 1 for exciton transfer problems.
+    - `npoints` [Default: 100000]: Number of points used in integration for the influence functional coefficients.
+    - `omega_max` [Default: `30.0 * omegac`]: Upper limit of influence functional coefficient integrations
+- if `type="drude_lorentz"`, the bath spectral density ``J(\\omega) = \\frac{2\\lambda}{\\Delta s^2}\\frac{\\omega \\gamma}{\\omega^2+\\gamma^2}``
+    - `lambda`: reorganization energy, ``\\lambda``, in energy units
+    - `gamma`: cutoff frequency, ``\\gamma``, in energy units
+    - `Ds` [Default: 2]: ``\\Delta s`` value. Typically set to 1 for exciton transfer problems.
+    - `npoints` [Default: 100000]: Number of points used in integration for the influence functional coefficients.
+    - `omega_max` [Default: `1000.0 * gamma`]: Upper limit of influence functional coefficient integrations
+- if `type="tabular"`, the bath spectral density is provided as a table in the file specified in `jw_file`
+- if `type="huang_rhys"`, the bath spectral density is provided in the form of a table of frequency-dependent Huang-Rhys factors in the file specified in `huang_rhys_file`
+"""
 function get_bath(b, unit)
     sd_type = get(b, "type", "ohmic")
     J = nothing
@@ -113,6 +163,16 @@ function get_bath(b, unit)
     J
 end
 
+"""
+    parse_bath(baths, sys, unit)
+This function parses the bath(s) interacting with the system. Currently only harmonic baths are supported.
+
+Parameters:
+- The temperature for the simulation needs to be specfied. This can be done in one of two ways:
+    - `beta` in units of 1/ha for the inverse temperature ``\\beta = \\frac{1}{k_BT}``.
+    - or `temperature` in the units of Kelvin.
+- A list of baths that interact with the system specified under `[[baths.bath]]` heading in the TOML file. Each bath is parsed by [`QuantumDynamicsCLI.ParseInput.get_bath`](@ref).
+"""
 function parse_bath(baths, sys, unit)
     β = 0.0
     if haskey(baths, "beta")
