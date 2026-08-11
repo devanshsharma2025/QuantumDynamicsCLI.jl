@@ -186,9 +186,6 @@ function calculate_print_observable(::QDSimUtilities.Calculation"complex_corr", 
     end
 end
 
-function foocli()
-	SpectralDensities.foo()
-end
 @cast function get_observable(system_input, simulate_input)
     QDSimUtilities.print_banner()
     units, sys, bath = ParseInput.parse_system_bath(system_input)
