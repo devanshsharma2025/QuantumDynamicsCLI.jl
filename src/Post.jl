@@ -186,6 +186,9 @@ function calculate_print_observable(::QDSimUtilities.Calculation"complex_corr", 
     end
 end
 
+function foocli()
+	SpectralDensities.foo()
+end
 @cast function get_observable(system_input, simulate_input)
     QDSimUtilities.print_banner()
     units, sys, bath = ParseInput.parse_system_bath(system_input)
@@ -229,7 +232,7 @@ function calculate_print_statetostate(::QDSimUtilities.Calculation"dynamics", sy
     flows = zero(ddt_flows)
 
     for b in 1:nbins
-        ddt_flows[:,:,:,b], flows[:,:,:,b] = Utilities.statetostate(; t=(ts * units.time_unit), ρs=ρs[b], H0=sys.Hamiltonian, L=L)
+        ddt_flows[:,:,:,b], flows[:,:,:,b] = Utilities.statetostate(; t=(ts * units.time_unit), ρs=ρs[b], H0=sys.Hamiltonian, L=L, external_fields=sys.external_fields)
     end
 
     for i in axes(flows,1)
