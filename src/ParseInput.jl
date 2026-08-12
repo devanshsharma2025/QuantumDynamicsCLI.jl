@@ -157,6 +157,16 @@ function get_bath(b, unit)
         Δs = get(b, "Ds", 2.0)
         classical = get(b, "classical", false)
         J = SpectralDensities.DrudeLorentz(; λ, γ, Δs, ωmax, npoints, classical)
+    elseif sd_type == "underdamped_brownian"
+        λ = b["lambda"] * unit.energy_unit
+        γ = b["gamma"] * unit.energy_unit
+        ω0 = b["omega0"] * unit.energy_unit
+        ωmax = get(b, "omega_max", 1000.0 * max(γ, ω0))
+        ωmax *= unit.energy_unit
+        npoints = get(b, "npoints", 100000)
+        Δs = get(b, "Ds", 2.0)
+        classical = get(b, "classical", false)
+        J = SpectralDensities.UnderdampedBrownian(; λ, ω0, γ, Δs, ωmax, npoints, classical)
     elseif sd_type == "tabular"
         inpfile = b["jw_file"]
         skipstart = get(b, "skipstart", 1)
