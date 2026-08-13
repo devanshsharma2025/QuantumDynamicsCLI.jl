@@ -70,7 +70,8 @@ function calculate_print_observable(::QDSimUtilities.Calculation"dynamics", sys:
         root_node = Simulate.calc(QDSimUtilities.Calculation(sim.calculation)(), sys, bath, sim, units, sim_node, method_group; dry=true)
         # This is a MC method.
         if !haskey(root_node, outputdir)
-            nbins = read_dataset(root_node, "num_bins")
+            # nbins = read_dataset(root_node, "num_bins")
+            nbins = get(sim_node, "nbins_filled", sim_node["num_bins"])
             ρs = [ read(root_node["bin #$b"][outputdir]["rho"]) for b in 1:nbins ]
             ts = read(root_node["bin #1"][outputdir]["time"])
         else
